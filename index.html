@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Blow</title>
+  </head>
+  <body>
+    <h1 id="blow">no</h1>
+
+    <p>Blow on your Mic and enjoy !</p>
+
+    <canvas id="viz"></canvas>
+
+    <script>
+      let audioCtx;
+      let canvas = document.getElementById("viz");
+      let canvasCtx = canvas.getContext("2d");
+
+      // function startUserMedia(stream) {
+      //   var input = audio_context.createMediaStreamSource(stream);
+
+      //   var micPower = 0;
+      //   var ALPHA = 0.5;
+      //   var i = 0;
+
+      //   var config = {};
+      //   config.numChannels = 1;
+      //   config.recordingCallback = function (channelData) {
+      //     //console.log(channelData);
+
+      //     var instantaneousPower = channelData[0];
+
+      //     // low-pass filter
+      //     micPower = ALPHA * instantaneousPower + (1.0 - ALPHA) * micPower;
+      //     document.getElementById("blow").innerHTML = `${micPower}`;
+
+      //     if (Math.abs(micPower) > 0.01) {
+      //       i++;
+      //       // If low-pass filter condition is fulfilled >= 5 times
+      //       if (i > 5) {
+      //         console.log("user is blowing !");
+      //         document.getElementById("blow").innerHTML = "User is blowing !";
+      //       }
+      //     } else {
+      //       i = 0;
+      //       document.getElementById("blow").innerHTML = "No blowing";
+      //     }
+      //   };
+
+      //   recorder = new Recorder(input, config);
+      // }
+
+      window.onload = function init() {
+        try {
+          // webkit shim
+          window.AudioContext =
+            window.AudioContext || window.webkitAudioContext;
+          window.URL = window.URL || window.webkitURL;
+
+          audio_context = new AudioContext();
+        } catch (e) {
+          alert("No web audio support in this browser!");
+        }
+
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then((stream) => {
+            const mediaRecorder = new MediaRecorder(stream);
+            if (!audioCtx) {
+              audioCtx = new AudioContext();
+            }
+
+            const source = audioCtx.createMediaStreamSource(stream);
+
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 2048;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            let micPower = 0;
+            let ALPHA = 0.05;
+            let i = 0;
+
+            source.connect(analyser);
+            draw();
+
+            function draw() {
+              const WIDTH = canvas.width;
+              const HEIGHT = canvas.height;
+
+              requestAnimationFrame(draw);
+
+              analyser.getByteTimeDomainData(dataArray);
+
+              canvasCtx.fillStyle = "rgb(200, 200, 200)";
+              canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
+
+              canvasCtx.lineWidth = 2;
+              canvasCtx.strokeStyle = "rgb(0, 0, 0)";
+
+              canvasCtx.beginPath();
+
+              let sliceWidth = (WIDTH * 1.0) / bufferLength;
+              let x = 0;
+
+              for (let i = 0; i < bufferLength; i++) {
+                let v = dataArray[i] / 128.0;
+                let y = (v * HEIGHT) / 2;
+
+                if (i === 0) {
+                  canvasCtx.moveTo(x, y);
+                } else {
+                  canvasCtx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+              }
+
+              canvasCtx.lineTo(canvas.width, canvas.height / 2);
+              canvasCtx.stroke();
+
+              // try out original implementation
+              let instantaneousPower = dataArray[0];
+              for (let i = 1; i < bufferLength; i++) {
+                if (instantaneousPower < dataArray[i]) {
+                  instantaneousPower = dataArray[i];
+                }
+              }
+
+              // low-pass filter
+              micPower = ALPHA * instantaneousPower + (1.0 - ALPHA) * micPower;
+              // document.getElementById("blow").innerHTML = `${micPower}`;
+              console.log(micPower);
+
+              if (Math.abs(micPower) > 150) {
+                i++;
+                // If low-pass filter condition is fulfilled >= 5 times
+                if (i > 5) {
+                  // console.log("user is blowing !");
+                  document.getElementById("blow").innerHTML =
+                    "User is blowing !";
+                }
+              } else {
+                i = 0;
+                document.getElementById("blow").innerHTML = "No blowing";
+              }
+
+              // // 2nd implementation
+              // analyser.getByteFrequencyData(dataArray);
+              // var values = 0;
+
+              // var length = dataArray.length;
+              // for (var i = 0; i < length; i++) {
+              //   values += dataArray[i];
+              // }
+
+              // var average = values / length;
+              // document.getElementById("blow").innerHTML = `${average}`;
+            }
+          })
+          .catch((error) => {
+            console.error(`${error.name}`);
+          });
+      };
+    </script>
+
+    <!-- <script src="recorder.js"></script> -->
+  </body>
+</html>
