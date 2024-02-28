@@ -1,0 +1,11 @@
+{
+  "name": "bubbles",
+  "version": "1.0.0",
+  "description": "Detect the blow of your user to create innovative interactions ;)",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ellen Lo",
+  "license": "ISC"
+}
